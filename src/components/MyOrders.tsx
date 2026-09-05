@@ -11,7 +11,8 @@ import {
   Sparkles,
   ShoppingBag,
   Eye,
-  X
+  X,
+  Smartphone
 } from 'lucide-react';
 import { OrderItem, OrderStatus } from '../types';
 
@@ -176,7 +177,7 @@ export const MyOrders: React.FC<MyOrdersProps> = ({ orders, onGoToStore }) => {
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${order.phone_brand ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 text-xs`}>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Serviço Adquirido:</span>
                     <span className="font-bold text-white text-sm font-display">
@@ -190,6 +191,18 @@ export const MyOrders: React.FC<MyOrdersProps> = ({ orders, onGoToStore }) => {
                       {order.player_id}
                     </span>
                   </div>
+
+                  {order.phone_brand && (
+                    <div>
+                      <span className="text-slate-400 block mb-0.5 flex items-center gap-1">
+                        <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+                        Marca do Celular:
+                      </span>
+                      <span className="font-bold text-cyan-300 text-sm bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40 inline-block font-tech">
+                        {order.phone_brand}
+                      </span>
+                    </div>
+                  )}
 
                   <div>
                     <span className="text-slate-400 block mb-0.5">Valor Pago:</span>

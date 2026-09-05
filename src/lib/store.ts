@@ -715,6 +715,7 @@ class AppStore {
     package_name?: string;
     price_kz: number;
     player_id: string;
+    phone_brand?: string;
     proof_url: string;
     observation?: string;
   }): Promise<OrderItem> {
@@ -732,6 +733,7 @@ class AppStore {
       package_name: orderData.package_name,
       price_kz: orderData.price_kz,
       player_id: orderData.player_id,
+      phone_brand: orderData.phone_brand,
       proof_url: orderData.proof_url,
       observation: orderData.observation,
       status: 'Pendente',

@@ -22,6 +22,7 @@ interface CheckoutModalProps {
   item: {
     name: string;
     packageName?: string;
+    category?: string;
     priceKz: number;
     imageUrl?: string;
   };
@@ -40,9 +41,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onRequireAuth,
   onOrderCreated,
 }) => {
+  // Check if current item is the Sensibilidade service
+  const isSensitivityService = 
+    item.category === 'Sensibilidade 13SHIBIRU' ||
+    Boolean(item.category && item.category.toLowerCase().includes('sensibilidade')) ||
+    item.name.toLowerCase().includes('sensibilidade') ||
+    item.name.toLowerCase().includes('sensi');
+
   // Generated Order Number for this checkout session
   const [orderNumber] = useState(() => `SHB-${Math.floor(1000 + Math.random() * 9000)}`);
   const [playerId, setPlayerId] = useState(currentUser?.player_id || '');
+  const [phoneBrand, setPhoneBrand] = useState('');
   const [observation, setObservation] = useState('');
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -94,6 +103,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
+    // Validation for phone brand if purchasing Sensibilidade
+    if (isSensitivityService && !phoneBrand.trim()) {
+      setErrorMessage('Por favor, informe a marca do seu celular (ex: Samsung, Xiaomi, iPhone, Motorola, Infinix, Tecno, Huawei...) para o serviço de Sensibilidade.');
+      return;
+    }
+
     if (!proofImage) {
       setErrorMessage('Por favor, faça o upload da foto do seu comprovativo de pagamento.');
       return;
@@ -107,6 +122,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         package_name: item.packageName,
         price_kz: item.priceKz,
         player_id: playerId.trim(),
+        phone_brand: isSensitivityService ? phoneBrand.trim() : undefined,
         proof_url: proofImage,
         observation: observation.trim() || undefined,
       });
@@ -136,7 +152,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const handleOpenWhatsApp = () => {
     const phone = paymentDetails.whatsapp_support.replace(/[^0-9]/g, '');
     const userEmail = currentUser?.email || 'N/A';
-    const message = `Olá suporte fiz o meu pedido no site e já enviei o comprovante agradecia que me acelerassem o meu processo!\nEmail: ${userEmail}\nPedido: #${orderNumber}\nItem: ${item.name} (${item.priceKz.toLocaleString('pt-AO')} KZ)\nID Jogador: ${playerId}`;
+    const phoneBrandText = isSensitivityService && phoneBrand.trim() ? `\nMarca do Celular: ${phoneBrand.trim()}` : '';
+    const message = `Olá suporte fiz o meu pedido no site e já enviei o comprovante agradecia que me acelerassem o meu processo!\nEmail: ${userEmail}\nPedido: #${orderNumber}\nItem: ${item.name} (${item.priceKz.toLocaleString('pt-AO')} KZ)\nID Jogador: ${playerId}${phoneBrandText}`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -180,6 +197,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <p className="text-slate-300 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
                   Recebemos o seu comprovativo. Aguarde alguns minutos enquanto verificamos a sua compra!
                 </p>
+                {isSensitivityService && phoneBrand && (
+                  <div className="pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-bold">
+                      <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+                      Marca do Celular: <span className="text-white">{phoneBrand}</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Accelerate Prompt */}
@@ -399,6 +424,84 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     Encontre seu ID no perfil dentro do jogo Free Fire (número com 8 a 10 dígitos).
                   </p>
                 </div>
+
+                {/* NOVO CAMPO OBRIGATÓRIO: MARCA DO CELULAR (SERVIÇO DE SENSIBILIDADE) */}
+                {isSensitivityService && (
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-[#0c1833] to-[#080f22] border border-cyan-500/50 shadow-lg space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <label 
+                        htmlFor="phone-brand-input"
+                        className="block text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5 font-tech"
+                      >
+                        <Smartphone className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span>Marca do Celular que você utiliza *</span>
+                      </label>
+                      <span className="text-[10px] font-black text-cyan-300 uppercase bg-cyan-950 px-2.5 py-0.5 rounded-full border border-cyan-500/50 shrink-0">
+                        Obrigatório
+                      </span>
+                    </div>
+
+                    <div>
+                      <input
+                        id="phone-brand-input"
+                        type="text"
+                        required
+                        placeholder="Ex: Samsung, Xiaomi, iPhone/Apple, Motorola, Infinix, Tecno, Huawei..."
+                        value={phoneBrand}
+                        onChange={e => {
+                          setPhoneBrand(e.target.value);
+                          if (errorMessage) setErrorMessage('');
+                        }}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-cyan-500/60 focus:border-cyan-300 focus:outline-none text-white text-sm font-medium tracking-wide placeholder-slate-500 shadow-inner"
+                      />
+                    </div>
+
+                    {/* Sugestões rápidas de marcas */}
+                    <div className="pt-1">
+                      <span className="text-[10px] text-slate-400 block mb-1.5 font-semibold">
+                        Toque rápido para selecionar:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          'Samsung',
+                          'Xiaomi',
+                          'iPhone / Apple',
+                          'Motorola',
+                          'Infinix',
+                          'Tecno',
+                          'Huawei',
+                          'Realme',
+                        ].map((brand) => {
+                          const isSelected = phoneBrand.trim().toLowerCase() === brand.toLowerCase() || phoneBrand === brand;
+                          return (
+                            <button
+                              key={brand}
+                              type="button"
+                              onClick={() => {
+                                setPhoneBrand(brand);
+                                if (errorMessage) setErrorMessage('');
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black shadow-md shadow-cyan-400/30 font-black scale-105'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 hover:border-cyan-500/40'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 leading-relaxed flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                      <span>
+                        Ajustaremos a sensibilidade, DPI e velocidade do ponteiro com precisão para a tela e sistema do seu aparelho.
+                      </span>
+                    </p>
+                  </div>
+                )}
 
                 {/* Proof Image Upload */}
                 <div>

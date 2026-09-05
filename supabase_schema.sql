@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     package_name TEXT,
     price_kz NUMERIC NOT NULL,
     player_id TEXT NOT NULL,
+    phone_brand TEXT,
     proof_url TEXT NOT NULL,
     observation TEXT,
     status order_status DEFAULT 'Pendente',

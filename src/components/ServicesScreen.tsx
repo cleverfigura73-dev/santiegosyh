@@ -50,6 +50,7 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
   const [checkoutItem, setCheckoutItem] = useState<{
     name: string;
     packageName?: string;
+    category?: string;
     priceKz: number;
     imageUrl?: string;
   } | null>(null);
@@ -65,6 +66,7 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
   const handleStartPurchase = (item: {
     name: string;
     packageName?: string;
+    category?: string;
     priceKz: number;
     imageUrl?: string;
   }) => {
@@ -107,6 +109,7 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
               onBuyService={(service) => {
                 handleStartPurchase({
                   name: service.name,
+                  category: service.category,
                   priceKz: service.price_kz,
                   imageUrl: service.image_url,
                 });
@@ -120,6 +123,7 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
                 onSelectPackage={(pkg) => {
                   handleStartPurchase({
                     name: pkg.name,
+                    category: 'Diamantes',
                     packageName: pkg.diamonds_count > 0 ? `${pkg.diamonds_count} Diamantes` : undefined,
                     priceKz: pkg.price_kz,
                     imageUrl: '/images/diamonds_banner.jpg',

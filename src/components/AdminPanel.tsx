@@ -22,7 +22,8 @@ import {
   ShieldCheck, 
   AlertCircle,
   Gem,
-  Tag
+  Tag,
+  Smartphone
 } from 'lucide-react';
 import { 
   OrderItem, 
@@ -379,6 +380,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </span>
                     <span className="text-slate-400 text-[11px]">
                       {order.user_email} • ID Free Fire: {order.player_id}
+                      {order.phone_brand && (
+                        <span className="text-cyan-300 ml-1 font-semibold">• Celular: {order.phone_brand}</span>
+                      )}
                     </span>
                   </div>
 
@@ -466,7 +470,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-white">
-                          {order.service_name}
+                          <div>{order.service_name}</div>
+                          {order.phone_brand && (
+                            <div className="mt-1 flex items-center gap-1 text-[11px] text-cyan-300 font-normal">
+                              <Smartphone className="w-3 h-3 text-cyan-400 shrink-0" />
+                              <span>Marca: <strong className="text-white font-bold">{order.phone_brand}</strong></span>
+                            </div>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 font-bold text-cyan-400">
                           {order.price_kz.toLocaleString('pt-AO')} KZ
@@ -815,6 +825,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </span>
                 <p className="text-[11px] text-slate-400">
                   {selectedProofOrder.user_email} • {selectedProofOrder.price_kz.toLocaleString('pt-AO')} KZ
+                  {selectedProofOrder.phone_brand && (
+                    <span className="text-cyan-300 font-bold ml-2">
+                      • Marca Celular: {selectedProofOrder.phone_brand}
+                    </span>
+                  )}
                 </p>
               </div>
               <button

@@ -59,6 +59,7 @@ export interface OrderItem {
   package_name?: string;
   price_kz: number;
   player_id: string;
+  phone_brand?: string;
   proof_url?: string;
   observation?: string;
   status: OrderStatus;
