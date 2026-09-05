@@ -3,6 +3,7 @@ import {
   UserRole,
   ServiceItem,
   DiamondPackage,
+  AccountItem,
   OrderItem,
   FeedbackItem,
   NotificationItem,
@@ -19,13 +20,13 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Initial Diamond Packages as requested
+// Initial Diamond Packages as requested by user
 const DEFAULT_PACKAGES: DiamondPackage[] = [
   {
     id: 'pkg-1',
-    name: '100 💎 + 20 de bônus',
+    name: '100 💎 + 10',
     diamonds_count: 100,
-    bonus_count: 20,
+    bonus_count: 10,
     price_kz: 1300,
     is_active: true,
     badge: 'ECONÔMICO',
@@ -33,18 +34,18 @@ const DEFAULT_PACKAGES: DiamondPackage[] = [
   },
   {
     id: 'pkg-2',
-    name: '310 💎 + 52 de bônus',
+    name: '310 💎 + 31',
     diamonds_count: 310,
-    bonus_count: 52,
-    price_kz: 3750,
+    bonus_count: 31,
+    price_kz: 3200,
     is_active: true,
     sort_order: 2,
   },
   {
     id: 'pkg-3',
-    name: '520 💎 + 104 de bônus',
+    name: '520 💎 + 52',
     diamonds_count: 520,
-    bonus_count: 104,
+    bonus_count: 52,
     price_kz: 5300,
     is_popular: true,
     is_active: true,
@@ -53,20 +54,20 @@ const DEFAULT_PACKAGES: DiamondPackage[] = [
   },
   {
     id: 'pkg-4',
-    name: '1060 💎 + 212 de bônus',
+    name: '1060 💎 + 106',
     diamonds_count: 1060,
-    bonus_count: 212,
-    price_kz: 11000,
+    bonus_count: 106,
+    price_kz: 10600,
     is_active: true,
     badge: 'MAIS ESCOLHIDO',
     sort_order: 4,
   },
   {
     id: 'pkg-5',
-    name: '2180 💎 + 436 de bônus',
+    name: '2180 💎 + 218',
     diamonds_count: 2180,
-    bonus_count: 436,
-    price_kz: 22300,
+    bonus_count: 218,
+    price_kz: 21200,
     is_popular: true,
     is_active: true,
     badge: 'SUPER BÔNUS',
@@ -74,10 +75,10 @@ const DEFAULT_PACKAGES: DiamondPackage[] = [
   },
   {
     id: 'pkg-6',
-    name: '5600 💎 + 1120 de bônus',
+    name: '5600 💎 + 560',
     diamonds_count: 5600,
-    bonus_count: 1120,
-    price_kz: 52000,
+    bonus_count: 560,
+    price_kz: 53000,
     is_active: true,
     badge: 'PRO GAMER',
     sort_order: 6,
@@ -94,7 +95,7 @@ const DEFAULT_PACKAGES: DiamondPackage[] = [
   },
   {
     id: 'pkg-8',
-    name: 'PASSE 🎫',
+    name: 'PASSE BOOYAH 🎫',
     diamonds_count: 0,
     bonus_count: 0,
     price_kz: 1700,
@@ -112,6 +113,46 @@ const DEFAULT_PACKAGES: DiamondPackage[] = [
     is_active: true,
     badge: 'MELHOR CUSTO',
     sort_order: 9,
+  },
+];
+
+// Initial Accounts for Sale in "Contas" service
+const DEFAULT_ACCOUNTS: AccountItem[] = [
+  {
+    id: 'acc-1',
+    title: 'Conta Mestre S34 - Calça Angelical Azul + 4 Armas Evolutivas',
+    price_kz: 25000,
+    image_url: '/images/shibiru_logo.jpg',
+    description: 'Nível 72, Calça Angelical Azul (M/F), MP40 Cobra Lv. Max, AK Dragão Lv. 5, 8 Passes de Elite antigos fechados. Login via Google com dados 100% limpos e troca imediata.',
+    level: '72',
+    login_type: 'Google',
+    status: 'available',
+    badge: 'ANGELICAL',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'acc-2',
+    title: 'Conta Elite Antiga - Passe 2 Hip Hop + Dunk Master',
+    price_kz: 45000,
+    image_url: '/images/booyah_pass.jpg',
+    description: 'Conta rara com Passe de Elite Hip Hop antigo, Dunk Master completo, sombra roxa, tênis angelical e mais de 120 emotes raros. Transferência segura com suporte 13SHIBIRU.',
+    level: '75',
+    login_type: 'Facebook',
+    status: 'available',
+    badge: 'HIP HOP RARO',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'acc-3',
+    title: 'Conta FF Intermediária - 2 Armas Evolutivas + Barbinha',
+    price_kz: 15000,
+    image_url: '/images/diamonds_banner.jpg',
+    description: 'Nível 64, Barbinha do Velho, UMP Dia do Booyah Lv. 4, Scar Megalodonte Lv. 4, 450 peitorais e diversas skins de incubadora.',
+    level: '64',
+    login_type: 'Google',
+    status: 'available',
+    badge: 'CUSTO BENEFÍCIO',
+    created_at: new Date().toISOString(),
   },
 ];
 

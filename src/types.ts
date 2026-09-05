@@ -43,6 +43,19 @@ export interface DiamondPackage {
   sort_order?: number;
 }
 
+export interface AccountItem {
+  id: string;
+  title: string;
+  price_kz: number;
+  image_url: string;
+  description?: string;
+  level?: string | number;
+  login_type?: string;
+  status: 'available' | 'sold';
+  badge?: string;
+  created_at: string;
+}
+
 export type OrderStatus = 
   | 'Pendente' 
   | 'Em análise' 
