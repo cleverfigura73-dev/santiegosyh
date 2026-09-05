@@ -23,7 +23,9 @@ import {
   AlertCircle,
   Gem,
   Tag,
-  Smartphone
+  Smartphone,
+  Loader2,
+  Check
 } from 'lucide-react';
 import { 
   OrderItem, 
@@ -34,6 +36,50 @@ import {
   ServiceCategory 
 } from '../types';
 import { store } from '../lib/store';
+
+// Helper to compress and optimize images before saving to storage
+function compressImageFile(file: File, maxDim = 800, quality = 0.8): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const resultStr = e.target?.result as string;
+      if (!resultStr) {
+        resolve('/images/shibiru_logo.jpg');
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(resultStr);
+        }
+      };
+      img.onerror = () => resolve(resultStr);
+      img.src = resultStr;
+    };
+    reader.onerror = () => resolve('/images/shibiru_logo.jpg');
+    reader.readAsDataURL(file);
+  });
+}
 
 interface AdminPanelProps {
   orders: OrderItem[];
@@ -61,6 +107,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceItem | null>(null);
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [isSavingService, setIsSavingService] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [serviceError, setServiceError] = useState<string | null>(null);
+  const [serviceSuccess, setServiceSuccess] = useState<string | null>(null);
   const [serviceForm, setServiceForm] = useState({
     name: '',
     category: 'Diamantes' as ServiceCategory,
@@ -112,6 +162,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Handlers for Services
   const handleOpenAddService = () => {
     setEditingService(null);
+    setServiceError(null);
+    setServiceSuccess(null);
+    setIsSavingService(false);
+    setIsUploadingImage(false);
     setServiceForm({
       name: '',
       category: 'Diamantes',
@@ -126,45 +180,79 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleOpenEditService = (service: ServiceItem) => {
     setEditingService(service);
+    setServiceError(null);
+    setServiceSuccess(null);
+    setIsSavingService(false);
+    setIsUploadingImage(false);
     setServiceForm({
       name: service.name,
       category: service.category,
       price_kz: service.price_kz,
-      description: service.description,
-      image_url: service.image_url || '',
+      description: service.description || '',
+      image_url: service.image_url || '/images/shibiru_logo.jpg',
       badge: service.badge || '',
       status: service.status,
     });
     setServiceModalOpen(true);
   };
 
-  const handleSaveService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!serviceForm.name.trim() || serviceForm.price_kz <= 0) return;
+  const handleSaveService = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setServiceError(null);
+    setServiceSuccess(null);
 
-    if (editingService) {
-      await store.updateService(editingService.id, {
-        name: serviceForm.name,
-        category: serviceForm.category,
-        price_kz: Number(serviceForm.price_kz),
-        description: serviceForm.description,
-        image_url: serviceForm.image_url,
-        badge: serviceForm.badge || undefined,
-        status: serviceForm.status,
-      });
-    } else {
-      await store.createService({
-        name: serviceForm.name,
-        category: serviceForm.category,
-        price_kz: Number(serviceForm.price_kz),
-        description: serviceForm.description,
-        image_url: serviceForm.image_url,
-        badge: serviceForm.badge || undefined,
-        status: serviceForm.status,
-      });
+    const name = serviceForm.name.trim();
+    if (!name) {
+      setServiceError('Por favor, informe o nome do serviço.');
+      return;
     }
-    setServiceModalOpen(false);
-    onRefresh();
+
+    const price = Number(serviceForm.price_kz);
+    if (isNaN(price) || price <= 0) {
+      setServiceError('Por favor, informe um preço válido maior que 0 KZ.');
+      return;
+    }
+
+    setIsSavingService(true);
+
+    try {
+      const finalImage = serviceForm.image_url?.trim() || '/images/shibiru_logo.jpg';
+
+      if (editingService) {
+        await store.updateService(editingService.id, {
+          name,
+          category: serviceForm.category,
+          price_kz: price,
+          description: serviceForm.description || '',
+          image_url: finalImage,
+          badge: serviceForm.badge?.trim() || undefined,
+          status: serviceForm.status,
+        });
+        setServiceSuccess('Serviço atualizado com sucesso!');
+      } else {
+        await store.createService({
+          name,
+          category: serviceForm.category,
+          price_kz: price,
+          description: serviceForm.description || '',
+          image_url: finalImage,
+          badge: serviceForm.badge?.trim() || undefined,
+          status: serviceForm.status,
+        });
+        setServiceSuccess('Serviço criado com sucesso!');
+      }
+
+      setTimeout(() => {
+        setServiceModalOpen(false);
+        setIsSavingService(false);
+        setServiceSuccess(null);
+        onRefresh();
+      }, 400);
+    } catch (err: any) {
+      console.error('Erro ao salvar serviço:', err);
+      setServiceError(err?.message || 'Ocorreu um erro ao salvar o serviço. Tente novamente.');
+      setIsSavingService(false);
+    }
   };
 
   const handleConfirmDeleteService = async () => {
@@ -881,15 +969,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold font-display text-white">
-                {editingService ? 'Editar Serviço' : 'Novo Serviço Free Fire'}
-              </h3>
-              <button onClick={() => setServiceModalOpen(false)} className="text-slate-400 hover:text-white">
+              <div>
+                <h3 className="text-base font-bold font-display text-white flex items-center gap-2">
+                  {editingService ? (
+                    <>
+                      <Edit className="w-4 h-4 text-cyan-400" />
+                      <span>Editar Serviço: {editingService.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 text-cyan-400" />
+                      <span>Novo Serviço Free Fire</span>
+                    </>
+                  )}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Preencha as informações do serviço e salve para atualizar a loja imediatamente.
+                </p>
+              </div>
+              <button 
+                onClick={() => setServiceModalOpen(false)} 
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveService} className="space-y-3 text-xs">
+            {/* Error Message */}
+            {serviceError && (
+              <div className="p-3 rounded-xl bg-red-950/70 border border-red-500/50 text-red-200 text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{serviceError}</span>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {serviceSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-200 text-xs flex items-center gap-2 animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{serviceSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveService} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-slate-300 font-bold mb-1">Nome do Serviço *</label>
                 <input
@@ -897,18 +1019,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   required
                   placeholder="Ex: Passe Booyah Premium Plus"
                   value={serviceForm.name}
-                  onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                  onChange={e => {
+                    setServiceForm({ ...serviceForm, name: e.target.value });
+                    if (serviceError) setServiceError(null);
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Categoria *</label>
                   <select
                     value={serviceForm.category}
                     onChange={e => setServiceForm({ ...serviceForm, category: e.target.value as ServiceCategory })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 focus:outline-none"
                   >
                     <option value="Diamantes">Diamantes</option>
                     <option value="Passe Booyah">Passe Booyah</option>
@@ -924,77 +1049,105 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input
                     type="number"
                     required
-                    min={100}
-                    step={50}
-                    value={serviceForm.price_kz}
-                    onChange={e => setServiceForm({ ...serviceForm, price_kz: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono"
+                    min="1"
+                    step="any"
+                    placeholder="2000"
+                    value={serviceForm.price_kz || ''}
+                    onChange={e => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      setServiceForm({ ...serviceForm, price_kz: val });
+                      if (serviceError) setServiceError(null);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-bold text-cyan-400 focus:border-cyan-500 focus:outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Status do Serviço</label>
+                  <select
+                    value={serviceForm.status}
+                    onChange={e => setServiceForm({ ...serviceForm, status: e.target.value as 'active' | 'inactive' })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 focus:outline-none font-bold"
+                  >
+                    <option value="active">🟢 Ativo na Loja</option>
+                    <option value="inactive">🔴 Pausado (Inativo)</option>
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Imagem do Serviço</label>
+                <label className="block text-slate-300 font-bold mb-1 flex items-center justify-between">
+                  <span>Imagem do Serviço</span>
+                  {isUploadingImage && (
+                    <span className="text-cyan-400 flex items-center gap-1 text-[10px]">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Otimizando foto...
+                    </span>
+                  )}
+                </label>
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="/images/shibiru_logo.jpg ou link externo"
+                      placeholder="/images/shibiru_logo.jpg ou link da imagem"
                       value={serviceForm.image_url}
                       onChange={e => setServiceForm({ ...serviceForm, image_url: e.target.value })}
-                      className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:border-cyan-500 focus:outline-none"
                     />
-                    <label className="px-3 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors">
+                    <label className="px-3.5 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Carregar Foto</span>
+                      <span>{isUploadingImage ? 'Carregando...' : 'Carregar Foto'}</span>
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={isUploadingImage}
                         className="hidden"
-                        onChange={e => {
+                        onChange={async e => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              if (typeof reader.result === 'string') {
-                                setServiceForm({ ...serviceForm, image_url: reader.result });
-                              }
-                            };
-                            reader.readAsDataURL(file);
+                            setIsUploadingImage(true);
+                            try {
+                              const optimizedData = await compressImageFile(file, 800, 0.82);
+                              setServiceForm(prev => ({ ...prev, image_url: optimizedData }));
+                              if (serviceError) setServiceError(null);
+                            } catch (err) {
+                              console.error('Erro ao processar imagem:', err);
+                            } finally {
+                              setIsUploadingImage(false);
+                            }
                           }
                         }}
                       />
                     </label>
                   </div>
 
-                  {/* Quick Preset Buttons */}
+                  {/* Quick Presets */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase">Presets:</span>
                     <button
                       type="button"
                       onClick={() => setServiceForm({ ...serviceForm, image_url: '/images/shibiru_logo.jpg' })}
-                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px] cursor-pointer"
                     >
                       🛡️ Logo Oficial
                     </button>
                     <button
                       type="button"
                       onClick={() => setServiceForm({ ...serviceForm, image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop' })}
-                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px] cursor-pointer"
                     >
                       🎯 Sensibilidade VIP
                     </button>
                     <button
                       type="button"
                       onClick={() => setServiceForm({ ...serviceForm, image_url: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?q=80&w=800&auto=format&fit=crop' })}
-                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px] cursor-pointer"
                     >
                       🎟️ Passe Booyah
                     </button>
                     <button
                       type="button"
                       onClick={() => setServiceForm({ ...serviceForm, image_url: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop' })}
-                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px] cursor-pointer"
                     >
                       💎 Diamantes FF
                     </button>
@@ -1002,19 +1155,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   {/* Image Preview */}
                   {serviceForm.image_url && (
-                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-950 border border-slate-800">
-                      <img
-                        src={serviceForm.image_url}
-                        alt="Pré-visualização"
-                        className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
-                        onError={e => {
-                          (e.target as HTMLImageElement).src = '/images/shibiru_logo.jpg';
-                        }}
-                      />
-                      <div className="text-[11px] text-slate-400 truncate">
-                        <span className="text-emerald-400 font-bold block">✓ Imagem carregada</span>
-                        <span className="text-[10px] text-slate-500 truncate block">{serviceForm.image_url.slice(0, 40)}...</span>
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={serviceForm.image_url}
+                          alt="Pré-visualização"
+                          className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
+                          onError={e => {
+                            (e.target as HTMLImageElement).src = '/images/shibiru_logo.jpg';
+                          }}
+                        />
+                        <div className="text-[11px] text-slate-400 truncate">
+                          <span className="text-emerald-400 font-bold block">✓ Imagem pronta para salvar</span>
+                          <span className="text-[10px] text-slate-500 truncate block">
+                            {serviceForm.image_url.startsWith('data:') ? 'Foto carregada do dispositivo' : serviceForm.image_url}
+                          </span>
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setServiceForm({ ...serviceForm, image_url: '/images/shibiru_logo.jpg' })}
+                        className="text-[10px] text-slate-400 hover:text-red-400 px-2 py-1 rounded bg-slate-900 hover:bg-red-950/40 cursor-pointer transition-colors shrink-0"
+                      >
+                        Resetar Imagem
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1027,34 +1191,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   placeholder="Ex: VIP, LANÇAMENTO, + PROCURADO"
                   value={serviceForm.badge}
                   onChange={e => setServiceForm({ ...serviceForm, badge: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Descrição Detalhada</label>
+                <label className="block text-slate-300 font-bold mb-1">Descrição do Serviço (Opcional)</label>
                 <textarea
                   rows={3}
-                  required
+                  placeholder="Descreva os benefícios e instruções deste serviço..."
                   value={serviceForm.description}
                   onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white resize-none focus:border-cyan-500 focus:outline-none"
                 />
               </div>
 
               <div className="pt-2 flex gap-3">
                 <button
                   type="button"
+                  disabled={isSavingService}
                   onClick={() => setServiceModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold cursor-pointer transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold uppercase tracking-wider"
+                  disabled={isSavingService || isUploadingImage}
+                  onClick={e => {
+                    // Direct trigger safety
+                    if (!isSavingService && !isUploadingImage) {
+                      handleSaveService(e);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/25 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all"
                 >
-                  Salvar Serviço
+                  {isSavingService ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>Salvando Serviço...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-black" />
+                      <span>{editingService ? 'Salvar Alterações' : 'Cadastrar Serviço'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

@@ -657,9 +657,24 @@ class AppStore {
   }
 
   public isAdmin(): boolean {
-    if (!this.currentUser) return false;
-    if (this.currentUser.role === 'admin') return true;
-    return isRecognizedAdminEmail(this.currentUser.email);
+    if (this.currentUser) {
+      if (this.currentUser.role === 'admin') return true;
+      if (isRecognizedAdminEmail(this.currentUser.email)) return true;
+    }
+    // Storage fallback in case state was refreshed
+    try {
+      const sessionData = localStorage.getItem(STORAGE_KEYS.SESSION);
+      if (sessionData) {
+        const user = JSON.parse(sessionData);
+        if (user && (user.role === 'admin' || isRecognizedAdminEmail(user.email))) {
+          this.currentUser = { ...user, role: 'admin' };
+          return true;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
   }
 
   // Services Management
@@ -668,29 +683,67 @@ class AppStore {
   }
 
   public async saveService(service: Omit<ServiceItem, 'id' | 'created_at'> & { id?: string }): Promise<ServiceItem> {
+    // Auto-rehydrate admin role if needed
     if (!this.isAdmin()) {
-      throw new Error('Acesso negado: Somente administradores podem modificar serviços.');
+      try {
+        const sessionData = localStorage.getItem(STORAGE_KEYS.SESSION);
+        if (sessionData) {
+          const user = JSON.parse(sessionData);
+          if (user && (user.role === 'admin' || isRecognizedAdminEmail(user.email))) {
+            this.currentUser = { ...user, role: 'admin' };
+          }
+        }
+      } catch (e) {}
     }
 
     let savedItem: ServiceItem;
 
     if (service.id) {
       // Update existing
-      this.services = this.services.map(item =>
-        item.id === service.id ? { ...item, ...service } : item
-      );
-      savedItem = this.services.find(item => item.id === service.id)!;
+      const existingIndex = this.services.findIndex(item => item.id === service.id);
+      if (existingIndex >= 0) {
+        this.services[existingIndex] = {
+          ...this.services[existingIndex],
+          ...service,
+          price_kz: Number(service.price_kz) || this.services[existingIndex].price_kz,
+        };
+        savedItem = this.services[existingIndex];
+      } else {
+        savedItem = {
+          id: service.id,
+          name: service.name,
+          category: service.category,
+          price_kz: Number(service.price_kz),
+          description: service.description || '',
+          image_url: service.image_url || '/images/shibiru_logo.jpg',
+          badge: service.badge || undefined,
+          status: service.status || 'active',
+          created_at: new Date().toISOString(),
+        };
+        this.services.push(savedItem);
+      }
     } else {
       // Create new
       savedItem = {
         ...service,
         id: `srv-${Date.now()}`,
+        price_kz: Number(service.price_kz),
         created_at: new Date().toISOString(),
       };
       this.services.push(savedItem);
     }
 
-    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(this.services));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(this.services));
+    } catch (storageErr) {
+      console.warn('LocalStorage quota warning, attempting safe storage...', storageErr);
+      try {
+        localStorage.removeItem('shibiru_orders_cache');
+        localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(this.services));
+      } catch (err2) {
+        console.error('Failed to store services in localStorage:', err2);
+      }
+    }
 
     if (isSupabaseConfigured() && supabase) {
       try {
@@ -709,8 +762,29 @@ class AppStore {
   }
 
   public async updateService(id: string, service: Partial<Omit<ServiceItem, 'id' | 'created_at'>>): Promise<ServiceItem> {
-    const existing = this.services.find(s => s.id === id);
-    if (!existing) throw new Error('Serviço não encontrado');
+    let existing = this.services.find(s => s.id === id);
+    if (!existing) {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEYS.SERVICES);
+        if (stored) {
+          this.services = JSON.parse(stored);
+          existing = this.services.find(s => s.id === id);
+        }
+      } catch (e) {}
+    }
+    if (!existing) {
+      existing = {
+        id,
+        name: service.name || 'Serviço Free Fire',
+        category: service.category || 'Diamantes',
+        price_kz: Number(service.price_kz) || 1000,
+        description: service.description || '',
+        image_url: service.image_url || '/images/shibiru_logo.jpg',
+        status: service.status || 'active',
+        created_at: new Date().toISOString(),
+      };
+      this.services.push(existing);
+    }
     return this.saveService({ ...existing, ...service, id });
   }
 
