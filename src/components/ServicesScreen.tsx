@@ -20,6 +20,7 @@ import { store } from '../lib/store';
 import { Header } from './Header';
 import { Hero } from './Hero';
 import { ServicesSection } from './ServicesSection';
+import { ProductDetailScreen } from './ProductDetailScreen';
 import { DiamondsSection } from './DiamondsSection';
 import { FeedbacksSection } from './FeedbacksSection';
 import { SupportSection } from './SupportSection';
@@ -56,6 +57,12 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
   // Navigation state within the Services Screen:
   // When an Administrator logs in, start DIRECTLY inside the 'admin' panel with all controls!
   const [currentView, setCurrentView] = useState<string>(() => (isAdminUser ? 'admin' : 'services'));
+
+  // Active service selected for viewing its detailed information screen
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+
+  // Dynamic service lookup: ensures ANY admin edit (image, price, description) updates immediately in real-time
+  const selectedProductDetail = services.find(s => s.id === selectedServiceId) || null;
 
   // Ensure if an administrator logs in, we prioritize opening the Admin Panel
   useEffect(() => {
@@ -94,8 +101,11 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
       
       {/* Services Screen Dedicated Header */}
       <Header
-        currentView={currentView}
-        setCurrentView={setCurrentView}
+        currentView={currentView === 'product-detail' ? 'services' : currentView}
+        setCurrentView={(view) => {
+          setSelectedServiceId(null);
+          setCurrentView(view);
+        }}
         currentUser={currentUser}
         isAdmin={isAdminUser}
         onOpenAuth={() => {}}
@@ -142,9 +152,12 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
               </button>
 
               <button
-                onClick={() => setCurrentView('services')}
+                onClick={() => {
+                  setSelectedServiceId(null);
+                  setCurrentView('services');
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  currentView === 'services'
+                  currentView === 'services' || currentView === 'product-detail'
                     ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30 font-black'
                     : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700'
                 }`}
@@ -166,62 +179,62 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
         </div>
       )}
 
-      {/* Main Content Area for Services & Store */}
+      {/* Main Content Area: SEPARATED SCREENS */}
       <main className="flex-1">
         
-        {/* 1. TELA PRINCIPAL DE SERVIÇOS (Default: BOOYAH, CONTAS, SKINS, SENSIBILIDADE, etc.) */}
+        {/* 1. TELA PRINCIPAL DE SERVIÇOS (Apenas Imagem + Nome + Ver Produto) */}
         {(currentView === 'services' || currentView === 'home') && (
           <div className="animate-in fade-in duration-200">
-            <Hero
-              onGoToDiamonds={() => setCurrentView('diamonds')}
-              onGoToServices={() => {
-                const el = document.getElementById('services-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            {/* Services Section with All Categories: BOOYAH, CONTAS, SKINS, SENSIBILIDADE, etc. */}
             <ServicesSection
               services={services}
-              onBuyService={(service) => {
-                handleStartPurchase({
-                  name: service.name,
-                  category: service.category,
-                  priceKz: service.price_kz,
-                  imageUrl: service.image_url,
-                });
+              onSelectService={(service) => {
+                setSelectedServiceId(service.id);
+                setCurrentView('product-detail');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-            />
-
-            {/* Diamonds Section embedded for easy access */}
-            <div className="border-t border-cyan-500/10">
-              <DiamondsSection
-                packages={diamondPackages}
-                onSelectPackage={(pkg) => {
-                  handleStartPurchase({
-                    name: pkg.name,
-                    category: 'Diamantes',
-                    packageName: pkg.diamonds_count > 0 ? `${pkg.diamonds_count} Diamantes` : undefined,
-                    priceKz: pkg.price_kz,
-                    imageUrl: '/images/diamonds_banner.jpg',
-                  });
-                }}
-              />
-            </div>
-
-            {/* Customer Feedbacks */}
-            <FeedbacksSection feedbacks={feedbacks} />
-
-            {/* Support section */}
-            <SupportSection
-              currentUser={currentUser}
-              latestOrder={orders[0]}
-              whatsappNumber={paymentDetails.whatsapp_support}
             />
           </div>
         )}
 
-        {/* 2. TABELA EXCLUSIVA DE DIAMANTES */}
+        {/* 2. TELA DEDICADA DE INFORMAÇÕES DO PRODUTO (Abre ao clicar em Ver Produto) */}
+        {currentView === 'product-detail' && selectedProductDetail && (
+          <ProductDetailScreen
+            service={selectedProductDetail}
+            whatsappNumber={paymentDetails.whatsapp_support}
+            onBack={() => {
+              setSelectedServiceId(null);
+              setCurrentView('services');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onBuy={(serviceToBuy) => {
+              handleStartPurchase({
+                name: serviceToBuy.name,
+                category: serviceToBuy.category,
+                priceKz: serviceToBuy.price_kz,
+                imageUrl: serviceToBuy.image_url,
+              });
+            }}
+          />
+        )}
+
+        {currentView === 'product-detail' && !selectedProductDetail && (
+          <div className="py-24 text-center space-y-4">
+            <p className="text-slate-400 text-sm font-semibold">
+              Serviço não encontrado ou pausado temporariamente pelo administrador.
+            </p>
+            <button
+              onClick={() => {
+                setSelectedServiceId(null);
+                setCurrentView('services');
+              }}
+              className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+            >
+              Voltar ao Catálogo de Serviços
+            </button>
+          </div>
+        )}
+
+        {/* 3. TELA EXCLUSIVA DE DIAMANTES */}
         {currentView === 'diamonds' && (
           <div className="pt-6 animate-in fade-in duration-200">
             <DiamondsSection
@@ -230,6 +243,7 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
                 handleStartPurchase({
                   name: pkg.name,
                   packageName: pkg.diamonds_count > 0 ? `${pkg.diamonds_count} Diamantes` : undefined,
+                  category: 'Diamantes',
                   priceKz: pkg.price_kz,
                   imageUrl: '/images/diamonds_banner.jpg',
                 });
@@ -238,24 +252,27 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
           </div>
         )}
 
-        {/* 3. HISTÓRICO DE PEDIDOS DO CLIENTE */}
+        {/* 4. HISTÓRICO DE PEDIDOS DO CLIENTE */}
         {currentView === 'orders' && (
           <div className="animate-in fade-in duration-200">
             <MyOrders
               orders={orders}
-              onGoToStore={() => setCurrentView('services')}
+              onGoToStore={() => {
+                setSelectedServiceId(null);
+                setCurrentView('services');
+              }}
             />
           </div>
         )}
 
-        {/* 4. FEEDBACKS DOS CLIENTES */}
+        {/* 5. FEEDBACKS DOS CLIENTES */}
         {currentView === 'feedbacks' && (
           <div className="pt-6 animate-in fade-in duration-200">
             <FeedbacksSection feedbacks={feedbacks} />
           </div>
         )}
 
-        {/* 5. SUPORTE OFICIAL WHATSAPP */}
+        {/* 6. SUPORTE OFICIAL WHATSAPP */}
         {currentView === 'support' && (
           <div className="pt-6 animate-in fade-in duration-200">
             <SupportSection
@@ -266,7 +283,7 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
           </div>
         )}
 
-        {/* 6. PAINEL ADMIN (GERENCIAMENTO, ADIÇÃO E EXCLUSÃO DE SERVIÇOS) */}
+        {/* 7. PAINEL ADMIN (GERENCIAMENTO, ADIÇÃO E EDIÇÃO DE SERVIÇOS EM TEMPO REAL) */}
         {currentView === 'admin' && isAdminUser && (
           <div className="animate-in fade-in duration-200">
             <AdminPanel

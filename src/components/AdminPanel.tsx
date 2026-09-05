@@ -36,50 +36,7 @@ import {
   ServiceCategory 
 } from '../types';
 import { store } from '../lib/store';
-
-// Helper to compress and optimize images before saving to storage
-function compressImageFile(file: File, maxDim = 800, quality = 0.8): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const resultStr = e.target?.result as string;
-      if (!resultStr) {
-        resolve('/images/shibiru_logo.jpg');
-        return;
-      }
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        if (width > height) {
-          if (width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        } else {
-          resolve(resultStr);
-        }
-      };
-      img.onerror = () => resolve(resultStr);
-      img.src = resultStr;
-    };
-    reader.onerror = () => resolve('/images/shibiru_logo.jpg');
-    reader.readAsDataURL(file);
-  });
-}
+import { compressImageFile } from '../lib/imageUtils';
 
 interface AdminPanelProps {
   orders: OrderItem[];

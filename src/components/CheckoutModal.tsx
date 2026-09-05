@@ -17,6 +17,7 @@ import {
 import confetti from 'canvas-confetti';
 import { UserProfile, PaymentDetails } from '../types';
 import { store } from '../lib/store';
+import { compressImageFile } from '../lib/imageUtils';
 
 interface CheckoutModalProps {
   item: {
@@ -71,7 +72,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setTimeout(() => setCopiedKey(null), 2500);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -80,13 +81,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    // Convert file to base64 for persistent storage
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProofImage(reader.result as string);
+    try {
+      const optimizedImage = await compressImageFile(file, 900, 0.85);
+      setProofImage(optimizedImage);
       setErrorMessage('');
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Erro ao processar comprovativo:', err);
+      // Fallback to basic reader
+      const reader = new FileReader();
+      reader.onload = () => {
+        setProofImage(reader.result as string);
+        setErrorMessage('');
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
