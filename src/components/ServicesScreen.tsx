@@ -1,4 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Shield, 
+  LayoutDashboard, 
+  ShoppingBag, 
+  LogOut, 
+  PlusCircle, 
+  Sparkles 
+} from 'lucide-react';
 import { 
   UserProfile, 
   ServiceItem, 
@@ -43,8 +51,18 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
   paymentDetails,
   onRefreshStore,
 }) => {
-  // Navigation state within the Services Screen
-  const [currentView, setCurrentView] = useState<string>('services');
+  const isAdminUser = Boolean(currentUser?.role === 'admin' || store.isAdmin());
+
+  // Navigation state within the Services Screen:
+  // When an Administrator logs in, start DIRECTLY inside the 'admin' panel with all controls!
+  const [currentView, setCurrentView] = useState<string>(() => (isAdminUser ? 'admin' : 'services'));
+
+  // Ensure if an administrator logs in, we prioritize opening the Admin Panel
+  useEffect(() => {
+    if (isAdminUser) {
+      setCurrentView('admin');
+    }
+  }, [isAdminUser, currentUser.id, currentUser.email]);
   
   // Checkout flow state
   const [checkoutItem, setCheckoutItem] = useState<{
@@ -54,8 +72,6 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
     priceKz: number;
     imageUrl?: string;
   } | null>(null);
-
-  const isAdminUser = store.isAdmin();
 
   // If on admin view but not admin, fallback to services
   if (currentView === 'admin' && !isAdminUser) {
@@ -88,6 +104,67 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
         onMarkNotificationRead={(id) => store.markNotificationAsRead(id)}
         onMarkAllNotificationsRead={() => store.markAllNotificationsAsRead()}
       />
+
+      {/* EXECUTIVE ADMIN BAR - Exclusively visible when Administrator is authenticated */}
+      {isAdminUser && (
+        <div className="bg-gradient-to-r from-red-950 via-[#0a0f24] to-red-950 border-b border-red-500/40 px-4 py-2.5 shadow-xl shadow-red-950/30 sticky top-20 z-30 backdrop-blur-md">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-md bg-red-600 text-white shadow-md shadow-red-600/50 flex items-center justify-center">
+                <Shield className="w-4 h-4" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-white text-xs sm:text-sm tracking-wide font-display">
+                    PAINEL DO ADMINISTRADOR
+                  </span>
+                  <span className="px-2 py-0.2 rounded-full text-[10px] font-black uppercase bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse">
+                    ATIVO
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono hidden sm:block">
+                  Sessão: {currentUser.email} • Postar serviços, aprovar pedidos e comprovativos
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentView('admin')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  currentView === 'admin'
+                    ? 'bg-red-600 text-white shadow-md shadow-red-600/50 font-black ring-1 ring-red-400'
+                    : 'bg-slate-900 text-red-300 hover:bg-slate-800 border border-red-800/60'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Painel Admin</span>
+              </button>
+
+              <button
+                onClick={() => setCurrentView('services')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  currentView === 'services'
+                    ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/30 font-black'
+                    : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Ver Loja (Modo Cliente)</span>
+              </button>
+
+              <button
+                onClick={onLogout}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/40 flex items-center gap-1 transition-all cursor-pointer"
+                title="Encerrar Sessão de Administrador"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area for Services & Store */}
       <main className="flex-1">

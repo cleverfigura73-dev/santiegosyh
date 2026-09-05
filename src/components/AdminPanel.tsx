@@ -231,7 +231,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               PAINEL DE CONTROLE <span className="text-red-400">13SHIBIRU</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Conectado como Administrador: 13Shibiru@gmail.com
+              Conectado como Administrador: <strong className="text-white font-mono">{store.getCurrentUser()?.email || '13Shibiru@gmail.com'}</strong>
             </p>
           </div>
 
@@ -934,14 +934,90 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">URL da Imagem</label>
-                <input
-                  type="text"
-                  placeholder="/images/shibiru_logo.jpg ou link externo"
-                  value={serviceForm.image_url}
-                  onChange={e => setServiceForm({ ...serviceForm, image_url: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
-                />
+                <label className="block text-slate-300 font-bold mb-1">Imagem do Serviço</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="/images/shibiru_logo.jpg ou link externo"
+                      value={serviceForm.image_url}
+                      onChange={e => setServiceForm({ ...serviceForm, image_url: e.target.value })}
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                    />
+                    <label className="px-3 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Carregar Foto</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (typeof reader.result === 'string') {
+                                setServiceForm({ ...serviceForm, image_url: reader.result });
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => setServiceForm({ ...serviceForm, image_url: '/images/shibiru_logo.jpg' })}
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                    >
+                      🛡️ Logo Oficial
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServiceForm({ ...serviceForm, image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop' })}
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                    >
+                      🎯 Sensibilidade VIP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServiceForm({ ...serviceForm, image_url: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?q=80&w=800&auto=format&fit=crop' })}
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                    >
+                      🎟️ Passe Booyah
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServiceForm({ ...serviceForm, image_url: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop' })}
+                      className="px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px]"
+                    >
+                      💎 Diamantes FF
+                    </button>
+                  </div>
+
+                  {/* Image Preview */}
+                  {serviceForm.image_url && (
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-950 border border-slate-800">
+                      <img
+                        src={serviceForm.image_url}
+                        alt="Pré-visualização"
+                        className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
+                        onError={e => {
+                          (e.target as HTMLImageElement).src = '/images/shibiru_logo.jpg';
+                        }}
+                      />
+                      <div className="text-[11px] text-slate-400 truncate">
+                        <span className="text-emerald-400 font-bold block">✓ Imagem carregada</span>
+                        <span className="text-[10px] text-slate-500 truncate block">{serviceForm.image_url.slice(0, 40)}...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
