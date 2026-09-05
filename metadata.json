@@ -1,0 +1,6 @@
+{
+  "name": "13SHIBIRU - Loja Free Fire",
+  "description": "Loja online oficial 13SHIBIRU para Free Fire: Diamantes, Passes, Skins, Contas e Sensibilidade com entrega rápida e segura.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
